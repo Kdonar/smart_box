@@ -13,35 +13,24 @@
 // Read temperature
 // -----------------
 
-// Data wire is plugged into port 0 on the Photon
-// Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
-OneWire oneWire(D0);
+// // Data wire is plugged into port 0 on the Photon
+// // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
+// OneWire oneWire(D0);
 
-// Pass our oneWire reference to Dallas Temperature.
-DallasTemperature dallas(&oneWire);
+// // Pass our oneWire reference to Dallas Temperature.
+// DallasTemperature dallas(&oneWire);
 
 //Create an instance of the RelayShield library, so we have something to talk to
 RelayShield myRelays;
 
-const double set_point = 37.0;
-const double set_plus_tol = 3.0;
-const double set_minus_tol = 3.0;
-const double error_plus = 130.0;
-const double error_minus = -30.0;
-// min off time of 5 minutes to allow pressure equalization
-const unsigned long  min_off = 300000;
-// min on time of 1 minutes for cooling stabilization
-const unsigned long min_on = 60000;
-
-const int S_STARTUP = 0;
-const int S_OFF = 1;
-const int S_START_COOLING = 2;
-const int S_COOLING = 3;
-const int S_END_COOLING = 4;
 
 // Create a variable that will store the temperature value
 double temperature = 0.0;
 double temperatureF = 0.0;
+unsigned long SmartBox::ts_cool_start = 0;
+unsigned long SmartBox::ts_cool_end = 0;
+
+class SmartBox;
 
 void setup() {
 
@@ -62,13 +51,111 @@ void setup() {
 
 void loop() {
     
-    // Default start with the unit in the off state //
-    static int state = S_STARTUP;
-    
-    // Store the current time 
-    static unsigned long ts_cool_start;
-    static unsigned long ts_cool_end;
-    
+
+}
+
+
+class SmartBox{
+	
+	double temperatureF; 
+	enum temp_setpoint_t {FRESH, FROZEN, SHELF}; // Behavior of compartment
+	
+	public:
+		SmartBox(int, temp_setpoint_t);
+		double getTemp(); // Get current temperature
+		void setState(state_t state); // Change setpoint of compartment
+		void switchLockState(); // Change position of lock
+		void update(); // Update relays
+		
+	protected:
+		struct compartment_t {
+			bool islocked;
+			temp_setpoint_t compartment_setpoint;
+			double measured_temp;
+			double set_plus_tol = 3.0;
+			double set_minus_tol = 3.0;
+			const double error_plus = 130.0;
+			const double error_minus = -30.0;
+		}compartment_1;
+			
+		// Compressor operating mode
+		enum compressor_operation_t {S_OFF, S_STARTUP, S_START_COOLING, S_COOLING, S_END_COOLING}compressor_operation;
+		
+		// min off time of 5 minutes to allow pressure equalization
+		const unsigned long  _min_off = 300000;
+		
+		// min on time of 1 minutes for cooling stabilization
+		const unsigned long _min_on = 60000;
+		
+		// Default start with the unit in the off state //
+		int state = S_STARTUP;
+		// Store the current compressor on and off times 
+		static unsigned long ts_cool_start;
+		static unsigned long ts_cool_end;
+};
+
+SmartBox::SmartBox(int temperature_pin, temp_setpoint_t temp_setpoint)
+{
+	this.setState(temp_setpoint); // set target temps and tolerances
+	
+	// Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
+	OneWire oneWire(temperature_pin);
+
+	// Pass our oneWire reference to Dallas Temperature.
+	DallasTemperature dallas(&oneWire);
+}
+
+double SmartBox::getTemp() {
+
+    // Request temperature conversion
+    dallas.requestTemperatures();
+            
+    // get the temperature in Celcius
+    float tempC = dallas.getTempCByIndex(0);
+            
+    // convert to double
+    temperature = (double)tempC;
+            
+    // convert to Fahrenheit
+    float tempF = DallasTemperature::toFahrenheit( tempC );
+            
+    // convert to double
+    temperatureF = (double)tempF; 
+}
+
+// Set the temperature and tolerances of the compartment by telling it which state to hold
+void SmartBox::setState(state_t state)
+{
+	compartment_state = state;
+	
+	switch (compartment_state)
+	{
+		case FRESH:
+			set_point = 37;
+			set_plus_tol = 3;
+			set_minus_tol = 3;
+		break;
+		
+		case FROZEN:
+			set_point = 0;
+			set_plus_tol = 3;
+			set_minus_tol = 3;
+		break;
+		
+		case SHELF:
+			set_point = 70;
+			set_plus_tol = 20;
+			set_minus_tol = 25;
+		break;
+	}
+}
+
+void SmartBox::switchLockState (){
+	// Insert code to lock compartment
+}
+
+void SmartBox::Update(){
+	// Code to turn compressor on/off
     switch (state)
     {
         case S_STARTUP:
@@ -81,7 +168,7 @@ void loop() {
                 // Do confirmation set on relay to make sure cooling is off
                 myRelays.off(1);
                 
-                // Since there was an error measuring tempearture, wait 5 seconds and try startup again
+                // Since there was an error measuring temperature, wait 5 seconds and try startup again
                 delay (5000);
               
             }
@@ -190,25 +277,4 @@ void loop() {
             
             break;
     }
-}
-
-double gettemp() {
-
-    // Request temperature conversion
-    dallas.requestTemperatures();
-            
-    // get the temperature in Celcius
-    float tempC = dallas.getTempCByIndex(0);
-            
-    // convert to double
-    temperature = (double)tempC;
-            
-    // convert to Fahrenheit
-    float tempF = DallasTemperature::toFahrenheit( tempC );
-            
-    // convert to double
-    temperatureF = (double)tempF;
-    
-    return temperatureF;
-    
 }
