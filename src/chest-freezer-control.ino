@@ -25,21 +25,22 @@ void loop() {
 
 class SmartBox: public OneWire, public DallasTemperature, public RelayShield{
 	
-	double temperatureF; 
-	enum temp_setpoint_t {FRESH, FROZEN, SHELF}; // Behavior of compartment
 	
 	public:
-		SmartBox(temp_setpoint_t)
+	enum temp_mode_t {FRESH, FROZEN, SHELF}; // Behavior of compartment
+	double temperatureF; 
+		SmartBox(temp_mode_t mode)
 		: OneWire(D0), DallasTemperature (this)
 		{
-		    
+			this->SetMode(mode);
 		}
-		
+		void SetMode(temp_mode_t);
 		
 	protected:
 		struct compartment_t {
 			bool islocked;
-			temp_setpoint_t temp_setpoint;
+// 			enum temp_mode_t {FRESH, FROZEN, SHELF} target_temp;
+            temp_mode_t target_temp;
 			double tempF;
 			double tempC;
 			double set_plus_tol = 3.0;
@@ -50,4 +51,7 @@ class SmartBox: public OneWire, public DallasTemperature, public RelayShield{
 
 };
 
-
+void SmartBox::SetMode(temp_mode_t mode)
+{
+	
+}
