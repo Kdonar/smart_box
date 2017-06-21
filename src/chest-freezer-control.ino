@@ -17,6 +17,11 @@
 
 class SmartBox: public OneWire, public DallasTemperature, public RelayShield
 {	
+	// min off time of 5 minutes to allow pressure equalizatoin
+	const unsigned long min_off = 300000;
+	// min on time of 1 minutes for cooling stabilization
+	const unsigned long min_on = 60000;
+	
 	public:
 		// ***Class variables***
 		// compressure_state is shared between all instances of class, 
@@ -36,23 +41,15 @@ class SmartBox: public OneWire, public DallasTemperature, public RelayShield
 		typedef enum temp_mode_t {FRESH, FROZEN, SHELF}temp_mode_t; // Behavior of compartment
 		
 		// ***Member Functions***
-		SmartBox(temp_mode_t mode) // Constructor
-		: OneWire(D0), DallasTemperature (this) 
+		SmartBox(temp_mode_t mode): OneWire(D0), DallasTemperature (this) 
 		{
 			SetMode(mode); // Set the target temp and min/max temperature for compartment
-// 			compressor_state = STARTUP; // Start compressor in the off state
 		}
 		void SetMode(temp_mode_t);
 		void GetTemp();
-		// void UpdateTemp();
-
-		// void Update();
+		void Update();
 		
-	protected:
-		// min off time of 5 minutes to allow pressure equalizatoin
-		const unsigned long min_off = 300000;
-		// min on time of 1 minutes for cooling stabilization
-		const unsigned long min_on = 60000;
+
 };
 
 // Set the operating mode of the compartment e.g. fresh, frozen, or shelf stable foods
@@ -99,16 +96,15 @@ void SmartBox::GetTemp()
     temperatureF = (double)tempF;	
 }
 
-
-
+//***object setup***
 SmartBox compartment_1(SmartBox::FRESH);
 SmartBox::compressor_state_t SmartBox::compressor_state = STARTUP; // Initialize compressor state
-
 
 void setup() {
 
 }
 
+//***Main program***
 void loop() {
     
 
