@@ -36,7 +36,7 @@ class SmartBox: public OneWire, public DallasTemperature, public RelayShield
 		typedef enum temp_mode_t {FRESH, FROZEN, SHELF}temp_mode_t; // Behavior of compartment
 		
 		// ***Member Functions***
-		SmartBox(temp_mode_t mode): OneWire(D0), DallasTemperature (this) 
+		SmartBox(temp_mode_t mode): OneWire(D0), DallasTemperature (this)
 		{
 			SetMode(mode); // Set the target temp and min/max temperature for compartment
 		}
@@ -187,13 +187,23 @@ void SmartBox::Update()
 	}
 }
 //***object setup***
+// SmartBox *compartment_1;
+// compartment_1 = new SmartBox(SmartBox::FRESH);
 SmartBox compartment_1(SmartBox::FRESH);
+// SmartBox * pCompartment = &compartment_1;
 SmartBox::compressor_state_t SmartBox::compressor_state = STARTUP; // Initialize compressor state
-unsigned long SmartBox::ts_cool_start = millis();
+unsigned long SmartBox::ts_cool_start = millis(); // Initialize compressor start and stop times
 unsigned long SmartBox::ts_cool_end = millis();
 
 void setup() {
-
+    // Particle variable declaration for temperature monitoring
+    Particle.variable("tempF", compartment_1.temperatureF); 
+    
+    SmartBox * pCompartment = &compartment_1; // Pointer for temperature and relay shield library initilization
+    
+    // Library initilization
+    pCompartment->DallasTemperature::begin();
+    pCompartment->RelayShield::begin();
 }
 
 //***Main program***
