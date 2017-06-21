@@ -49,7 +49,9 @@ class SmartBox: public OneWire, public DallasTemperature, public RelayShield
 		bool ErrorCheck();
 };
 
-// Set the operating mode of the compartment e.g. fresh, frozen, or shelf stable foods
+/****MEMBER FUNCTION****/
+
+// Set the operating mode of the compartment e.g. fresh, frozen, or off
 void SmartBox::SetMode(temp_mode_t mode)
 {
 	switch (mode)
@@ -67,9 +69,9 @@ void SmartBox::SetMode(temp_mode_t mode)
 		break;
 		
 		case SHELF:
-			target_temp = 70;
-			set_plus_tol = 20;
-			set_minus_tol = 25;
+			target_temp = 0;
+			set_plus_tol = 1000;
+			set_minus_tol = -1000;
 		break;
 	}
 }
@@ -79,13 +81,13 @@ void SmartBox::GetTemp()
 {
     // Request temperature conversion
     this->requestTemperatures();
-            
+   
     // get the temperature in Celcius
     float tempC = this->getTempCByIndex(0);
-            
+ 
     // convert to Fahrenheit
     float tempF = DallasTemperature::toFahrenheit( tempC );
-            
+   
     // convert to double
     temperatureF = (double)tempF;	
 }
@@ -98,7 +100,12 @@ bool SmartBox::ErrorCheck(){
 void SmartBox::Update()
 {
 	GetTemp();
-	
+	if (target_temp == 99) SetMode(SHELF);
+	else 
+	{
+		set_plus_tol = 3;
+		set_minus_tol = 3;
+	}
 	switch(compressor_state)
 	{
 		case STARTUP:
@@ -186,27 +193,43 @@ void SmartBox::Update()
 			break;	
 	}
 }
-//***object setup***
-// SmartBox *compartment_1;
-// compartment_1 = new SmartBox(SmartBox::FRESH);
+
+// Object Setup
 SmartBox compartment_1(SmartBox::FRESH);
-// SmartBox * pCompartment = &compartment_1;
 SmartBox::compressor_state_t SmartBox::compressor_state = STARTUP; // Initialize compressor state
-unsigned long SmartBox::ts_cool_start = millis(); // Initialize compressor start and stop times
+
+// Initialize compressor start and stop times
+unsigned long SmartBox::ts_cool_start = millis(); 
 unsigned long SmartBox::ts_cool_end = millis();
+
+char temperatureString[10]; // Used for sending the temperture to the app
 
 void setup() {
     // Particle variable declaration for temperature monitoring
     Particle.variable("tempF", compartment_1.temperatureF); 
-    
-    SmartBox * pCompartment = &compartment_1; // Pointer for temperature and relay shield library initilization
+    Particle.variable("Setpoint", compartment_1.target_temp);
+	// Particle functoin declaration for use by app
+    Particle.function("getTemp",getTempHtml);
+	
+	// Pointer for temperature and relay shield library initilization
+    SmartBox * pCompartment = &compartment_1; 
     
     // Library initilization
     pCompartment->DallasTemperature::begin();
     pCompartment->RelayShield::begin();
 }
 
-//***Main program***
+/****MAIN PROGRAM****/
 void loop() {
     compartment_1.Update();
+}
+
+/****APP FUNCTIONS****/
+double getTempHtml(String){
+    return  sprintf(temperatureString, "%.2f", compartment_1.temperatureF);
+}
+
+void setTempFtn(int command)
+{
+	compartment_1.target_temp = command;
 }
