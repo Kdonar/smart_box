@@ -8,13 +8,6 @@
 #include <RelayShield.h>
 
 
-// typedef enum temp_mode_t {FRESH, FROZEN, SHELF}temp_mode_t; // Behavior of compartment
-// typedef static enum compressor_state_t {STARTUP, START_COOLING, COOLING, END_COOLING, OFF} compressor_state_t;
-
-// temp_mode_t test = FRESH;
-
-
-
 class SmartBox: public OneWire, public DallasTemperature, public RelayShield
 {	
 	// min off time of 5 minutes to allow pressure equalizatoin
@@ -28,6 +21,8 @@ class SmartBox: public OneWire, public DallasTemperature, public RelayShield
 		// must initialize outside of class instance
 		typedef enum compressor_state_t {STARTUP, START_COOLING, COOLING, END_COOLING, OFF}compressor_state_t;
 		static compressor_state_t compressor_state;
+		static unsigned long ts_cool_start;
+		static unsigned long ts_cool_end;
 
 		const double  error_plus = 130; // Maximum temp output, anything higher is considered an erroneous reading
 		const double  error_minus = -30; // Minimum temp output, anything lower is considered an erroneous reading
@@ -49,7 +44,9 @@ class SmartBox: public OneWire, public DallasTemperature, public RelayShield
 		void GetTemp();
 		void Update();
 		
-
+		protected:
+		bool ErrorCheck();
+		
 };
 
 // Set the operating mode of the compartment e.g. fresh, frozen, or shelf stable foods
@@ -86,9 +83,6 @@ void SmartBox::GetTemp()
     // get the temperature in Celcius
     float tempC = this->getTempCByIndex(0);
             
-    // convert to double
-    double temperature = (double)tempC;
-            
     // convert to Fahrenheit
     float tempF = DallasTemperature::toFahrenheit( tempC );
             
@@ -96,9 +90,65 @@ void SmartBox::GetTemp()
     temperatureF = (double)tempF;	
 }
 
+// Check for erroneous temperature reading
+bool SmartBox::ErrorCheck(){
+	return (temperatureF < error_minus || temperatureF > error_plus);
+}
+
+void SmartBox::Update()
+{
+	GetTemp();
+	
+	switch(compressor_state)
+	{
+		case STARTUP:
+		
+			
+			if(ErrorCheck())
+			{
+				// Do confirmation set on relay to make sure cooling is off
+				this->off(1);
+				// Since there was an error measuring temperature, wait 5 seconds and try startup again
+				delay(500);
+			}
+			else if ( temperatureF > (target_temp + set_plus_tol)) compressor_state = START_COOLING;
+			else 
+			{
+				// Do confirmation set on relay to make sure cooling is off
+				this->off(1);
+				
+				// Since the actual cooling ending time is unknown, set it at this point
+				ts_cool_end = millis();
+				compressor_state = OFF;
+				delay(500);
+			}
+			break;
+		
+		case OFF:
+			if (ErrorCheck())
+			{
+				this->off(1);
+				delay(5000);
+			}
+			else if ( ((millis() - ts_cool_end) > min_off) && (temperatureF > (target_temp + set_plus_tol)))
+			{
+				compressor_state = START_COOLING;
+			}
+			else
+			{
+				this->off(1);
+				delay(500);
+			}
+			break;
+			
+			
+			
+	}
+}
 //***object setup***
 SmartBox compartment_1(SmartBox::FRESH);
 SmartBox::compressor_state_t SmartBox::compressor_state = STARTUP; // Initialize compressor state
+
 
 void setup() {
 
