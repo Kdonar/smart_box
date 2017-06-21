@@ -141,6 +141,47 @@ void SmartBox::Update()
 			}
 			break;
 			
+		case START_COOLING:
+			
+			// Record the time cooling has started
+			ts_cool_start = millis();
+			
+			// Set the relay to turn on cooling
+			this->on(1);
+			compressor_state = COOLING;
+			
+			break;
+		
+		case COOLING:
+		
+			if(ErrorCheck())
+			{
+				this->on(1);
+				delay(5000);
+			}
+			
+			else if( ((millis() - ts_cool_start) > min_on) && (temperatureF < (target_temp - set_minus_tol)))
+			{
+				compressor_state = END_COOLING;
+			}
+			else
+			{
+				// Do a confirmation set to make sure cooling is on
+				this->on(1);
+				delay(5000);
+			}
+			break;
+			
+		case END_COOLING:
+		
+			// Record the time cooling has stopped
+			ts_cool_end = millis();
+			
+			// Set the relay to turn the cooling off
+			this->off(1);
+			compressor_state = OFF;
+			
+			break;
 			
 			
 	}
@@ -157,5 +198,4 @@ void setup() {
 //***Main program***
 void loop() {
     
-
 }
