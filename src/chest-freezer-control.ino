@@ -30,7 +30,7 @@ class SmartBox: public OneWire, public DallasTemperature, public RelayShield
 		// ***Instance variables***
 		bool islocked; // Locked state of compartment
 		double target_temp; // Target temperature of compartment
-		double tempF; // Current temperature of compartment
+		double temperatureF; // Current temperature of compartment
 		double set_plus_tol = 3.0; // Default tolerance of compartment
 		double set_minus_tol = 3.0; // Default tolerance of compartment
 		typedef enum temp_mode_t {FRESH, FROZEN, SHELF}temp_mode_t; // Behavior of compartment
@@ -43,6 +43,7 @@ class SmartBox: public OneWire, public DallasTemperature, public RelayShield
 // 			compressor_state = STARTUP; // Start compressor in the off state
 		}
 		void SetMode(temp_mode_t);
+		void GetTemp();
 		// void UpdateTemp();
 
 		// void Update();
@@ -79,8 +80,27 @@ void SmartBox::SetMode(temp_mode_t mode)
 	}
 }
 
+// Get temperature for this instance (Compartment)
+void SmartBox::GetTemp()
+{
+    // Request temperature conversion
+    this->requestTemperatures();
+            
+    // get the temperature in Celcius
+    float tempC = this->getTempCByIndex(0);
+            
+    // convert to double
+    double temperature = (double)tempC;
+            
+    // convert to Fahrenheit
+    float tempF = DallasTemperature::toFahrenheit( tempC );
+            
+    // convert to double
+    temperatureF = (double)tempF;	
+}
 
-// LAST ADDED CODE 6/20
+
+
 SmartBox compartment_1(SmartBox::FRESH);
 SmartBox::compressor_state_t SmartBox::compressor_state = STARTUP; // Initialize compressor state
 
