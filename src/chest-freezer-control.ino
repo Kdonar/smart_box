@@ -210,6 +210,7 @@ void setup() {
     Particle.variable("Setpoint", compartment_1.target_temp);
 	// Particle functoin declaration for use by app
     Particle.function("getTemp",getTempHtml);
+    Particle.function("setTemp",setTempFtn);
 	
 	// Pointer for temperature and relay shield library initilization
     SmartBox * pCompartment = &compartment_1; 
@@ -229,7 +230,8 @@ double getTempHtml(String){
     return  sprintf(temperatureString, "%.2f", compartment_1.temperatureF);
 }
 
-void setTempFtn(int command)
+int setTempFtn(String command)
 {
-	compartment_1.target_temp = command;
+	compartment_1.target_temp = command.toInt();
+	return 1;
 }
