@@ -40,13 +40,13 @@ class SmartBox: public OneWire, public DallasTemperature, public RelayShield
 		{
 			SetMode(mode); // Set the target temp and min/max temperature for compartment
 		}
-		void SetMode(temp_mode_t);
-		void GetTemp();
+		
+		void SetMode(temp_mode_t); // Change set temperature of the compartment
+		void GetTemp(); // Update temperatureF
 		void Update();
 		
 		protected:
 		bool ErrorCheck();
-		
 };
 
 // Set the operating mode of the compartment e.g. fresh, frozen, or shelf stable foods
@@ -102,7 +102,6 @@ void SmartBox::Update()
 	switch(compressor_state)
 	{
 		case STARTUP:
-		
 			
 			if(ErrorCheck())
 			{
@@ -130,10 +129,12 @@ void SmartBox::Update()
 				this->off(1);
 				delay(5000);
 			}
+			
 			else if ( ((millis() - ts_cool_end) > min_off) && (temperatureF > (target_temp + set_plus_tol)))
 			{
 				compressor_state = START_COOLING;
 			}
+			
 			else
 			{
 				this->off(1);
@@ -164,6 +165,7 @@ void SmartBox::Update()
 			{
 				compressor_state = END_COOLING;
 			}
+			
 			else
 			{
 				// Do a confirmation set to make sure cooling is on
@@ -181,15 +183,14 @@ void SmartBox::Update()
 			this->off(1);
 			compressor_state = OFF;
 			
-			break;
-			
-			
+			break;	
 	}
 }
 //***object setup***
 SmartBox compartment_1(SmartBox::FRESH);
 SmartBox::compressor_state_t SmartBox::compressor_state = STARTUP; // Initialize compressor state
-
+unsigned long SmartBox::ts_cool_start = millis();
+unsigned long SmartBox::ts_cool_end = millis();
 
 void setup() {
 
@@ -197,5 +198,5 @@ void setup() {
 
 //***Main program***
 void loop() {
-    
+    compartment_1.Update();
 }
