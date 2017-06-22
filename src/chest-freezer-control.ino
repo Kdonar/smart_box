@@ -208,16 +208,16 @@ int SmartBox::LockState(String command)
     else isLocked = false;
     
     if(isLocked) {
-        this->Servo::write(180);
-        delay(100);
-        this->detach();
+        this->Servo::writeMicroseconds(1000);
+        delay(500);
+        // this->detach();
         return 1;
     }
     else 
     {
-        this->Servo::write(0);
+        this->Servo::writeMicroseconds(2000);
         delay(100);
-        this->Servo::detach();
+        // this->Servo::detach();
         return 0;
     }
 }
