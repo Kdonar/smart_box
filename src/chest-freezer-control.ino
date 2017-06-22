@@ -43,7 +43,7 @@ class SmartBox: public OneWire, public DallasTemperature, public RelayShield, pu
 		{
 			SetMode(mode); // Set the target temp and min/max temperature for compartment
 			lock_pin = lock;
-			LockState("1"); // initialize the compartment in the locked state
+			this->LockState("1");
 		}
 		
 		void SetMode(temp_mode_t); // Change set temperature of the compartment
@@ -239,6 +239,7 @@ void setup() {
     // Particle variable declaration for temperature monitoring
     Particle.variable("tempF", compartment_1.temperatureF); 
     Particle.variable("Setpoint", compartment_1.target_temp);
+    Particle.variable("LockState", compartment_1.isLocked);
 	// Particle functoin declaration for use by app
     Particle.function("getTemp",getTempHtml);
     Particle.function("setTemp",setTempFtn);
