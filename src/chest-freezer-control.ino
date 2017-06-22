@@ -1,4 +1,7 @@
 // This #include statement was automatically added by the Particle IDE.
+#include <Adafruit_PWMServoDriver.h>
+
+// This #include statement was automatically added by the Particle IDE.
 #include "spark-dallas-temperature.h"
 
 // This #include statement was automatically added by the Particle IDE.
@@ -7,7 +10,7 @@
 // This #include statement was automatically added by the Particle IDE.
 #include <RelayShield.h>
 
-
+/****SMARTBOX CLASS****/
 class SmartBox: public OneWire, public DallasTemperature, public RelayShield
 {	
 	// min off time of 5 minutes to allow pressure equalizatoin
@@ -28,7 +31,7 @@ class SmartBox: public OneWire, public DallasTemperature, public RelayShield
 		const double  error_minus = -30; // Minimum temp output, anything lower is considered an erroneous reading
 		
 		// ***Instance variables***
-		bool islocked; // Locked state of compartment
+		bool isLocked; // Locked state of compartment
 		double target_temp; // Target temperature of compartment
 		double temperatureF; // Current temperature of compartment
 		double set_plus_tol = 3.0; // Default tolerance of compartment
@@ -193,8 +196,10 @@ void SmartBox::Update()
 			break;	
 	}
 }
+// End Smartbox Class
 
 // Object Setup
+Servo lockServo;
 SmartBox compartment_1(SmartBox::FRESH);
 SmartBox::compressor_state_t SmartBox::compressor_state = STARTUP; // Initialize compressor state
 
@@ -218,11 +223,14 @@ void setup() {
     // Library initilization
     pCompartment->DallasTemperature::begin();
     pCompartment->RelayShield::begin();
+    
+    lockServo.attach(A5);
+    Particle.function("Lock", LockStatus);
 }
 
 /****MAIN PROGRAM****/
 void loop() {
-    compartment_1.Update();
+    // compartment_1.Update();
 }
 
 /****APP FUNCTIONS****/
@@ -234,4 +242,26 @@ int setTempFtn(String command)
 {
 	compartment_1.target_temp = command.toInt();
 	return 1;
+}
+
+int LockStatus(String command)
+{
+    lockServo.attach(A5);
+    int pos = command.toInt();
+    if(pos == 1) compartment_1.isLocked = true;
+    else compartment_1.isLocked = false;
+    
+    if(compartment_1.isLocked) {
+        lockServo.write(180);
+        delay(100);
+        lockServo.detach();
+        return 1;
+    }
+    else 
+    {
+        lockServo.write(0);
+        delay(100);
+        lockServo.detach();
+        return 0;
+    }
 }
