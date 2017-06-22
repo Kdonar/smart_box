@@ -255,7 +255,7 @@ void setup() {
 
 /****MAIN PROGRAM****/
 void loop() {
-    // compartment_1.Update();
+    compartment_1.Update();
 }
 
 /****APP FUNCTIONS****/
