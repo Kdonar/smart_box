@@ -76,7 +76,7 @@ void SmartBox::SetMode(temp_mode_t mode)
 		break;
 		
 		case SHELF:
-			target_temp = 0;
+			target_temp = 99;
 			set_plus_tol = 1000;
 			set_minus_tol = -1000;
 		break;
