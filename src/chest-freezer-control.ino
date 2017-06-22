@@ -43,6 +43,7 @@ class SmartBox: public OneWire, public DallasTemperature, public RelayShield, pu
 		{
 			SetMode(mode); // Set the target temp and min/max temperature for compartment
 			lock_pin = lock;
+			LockState("1"); // initialize the compartment in the locked state
 		}
 		
 		void SetMode(temp_mode_t); // Change set temperature of the compartment
