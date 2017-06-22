@@ -11,7 +11,7 @@
 #include <RelayShield.h>
 
 /****SMARTBOX CLASS****/
-class SmartBox: public OneWire, public DallasTemperature, public RelayShield
+class SmartBox: public OneWire, public DallasTemperature, public RelayShield, public Servo
 {	
 	// min off time of 5 minutes to allow pressure equalizatoin
 	const unsigned long min_off = 300000;
@@ -39,17 +39,20 @@ class SmartBox: public OneWire, public DallasTemperature, public RelayShield
 		typedef enum temp_mode_t {FRESH, FROZEN, SHELF}temp_mode_t; // Behavior of compartment
 		
 		// ***Member Functions***
-		SmartBox(temp_mode_t mode): OneWire(D0), DallasTemperature (this)
+		SmartBox(temp_mode_t mode,int wire_pin, int lock): OneWire(wire_pin), DallasTemperature (this)
 		{
 			SetMode(mode); // Set the target temp and min/max temperature for compartment
+			lock_pin = lock;
 		}
 		
 		void SetMode(temp_mode_t); // Change set temperature of the compartment
 		void GetTemp(); // Update temperatureF
-		void Update();
+		void Update(); // Turn compressor on/off
+		int LockState(String); // Control for compartment lock
 		
 		protected:
 		bool ErrorCheck();
+		int lock_pin;
 };
 
 /****MEMBER FUNCTION****/
@@ -99,7 +102,7 @@ void SmartBox::GetTemp()
 bool SmartBox::ErrorCheck(){
 	return (temperatureF < error_minus || temperatureF > error_plus);
 }
-
+// Check current temperature and turn compressor on/off
 void SmartBox::Update()
 {
 	GetTemp();
@@ -196,11 +199,33 @@ void SmartBox::Update()
 			break;	
 	}
 }
+
+int SmartBox::LockState(String command)
+{
+    this->attach(lock_pin);
+    int pos = command.toInt();
+    if(pos == 1) isLocked = true;
+    else isLocked = false;
+    
+    if(isLocked) {
+        this->Servo::write(180);
+        delay(100);
+        this->detach();
+        return 1;
+    }
+    else 
+    {
+        this->Servo::write(0);
+        delay(100);
+        this->Servo::detach();
+        return 0;
+    }
+}
 // End Smartbox Class
 
 // Object Setup
 Servo lockServo;
-SmartBox compartment_1(SmartBox::FRESH);
+SmartBox compartment_1(SmartBox::FRESH,D0,A5);
 SmartBox::compressor_state_t SmartBox::compressor_state = STARTUP; // Initialize compressor state
 
 // Initialize compressor start and stop times
@@ -225,7 +250,7 @@ void setup() {
     pCompartment->RelayShield::begin();
     
     lockServo.attach(A5);
-    Particle.function("Lock", LockStatus);
+    Particle.function("Lock", LockControl);
 }
 
 /****MAIN PROGRAM****/
@@ -234,34 +259,20 @@ void loop() {
 }
 
 /****APP FUNCTIONS****/
+// Function for app to request temperature
 double getTempHtml(String){
     return  sprintf(temperatureString, "%.2f", compartment_1.temperatureF);
 }
 
+// Function for App controlled temperature
 int setTempFtn(String command)
 {
 	compartment_1.target_temp = command.toInt();
 	return 1;
 }
 
-int LockStatus(String command)
+// Function for App controlled lock
+int LockControl(String command)
 {
-    lockServo.attach(A5);
-    int pos = command.toInt();
-    if(pos == 1) compartment_1.isLocked = true;
-    else compartment_1.isLocked = false;
-    
-    if(compartment_1.isLocked) {
-        lockServo.write(180);
-        delay(100);
-        lockServo.detach();
-        return 1;
-    }
-    else 
-    {
-        lockServo.write(0);
-        delay(100);
-        lockServo.detach();
-        return 0;
-    }
+	return compartment_1.LockState(command);
 }
